@@ -35,7 +35,7 @@ func init() {
 func main() {
 	s, _ := discordgo.New("Bot " + *BotToken)
 	s.AddHandler(func(s *discordgo.Session, r *discordgo.Ready) {
-		fmt.Println("Bot is ready")
+		log.Println("Bot is ready")
 	})
 
 	s.Identify.Intents |= discordgo.IntentMessageContent
@@ -54,24 +54,24 @@ func main() {
 	serverAlive = checkServer()
 
 	// Wait here until CTRL-C or other term signal is received.
-	fmt.Println("Press CTRL-C to exit")
+	log.Println("Press CTRL-C to exit")
 	sc := make(chan os.Signal, 1)
 	done = make(chan bool)
 
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	<-sc
-	fmt.Println("Exiting")
+	log.Println("Exiting")
 	done <- true
 
 	// remove all registered commands
 	registeredCommands, err := s.ApplicationCommands(s.State.User.ID, "")
 	if err != nil {
-		log.Fatalf("Could not fetch registered commands: %v", err)
+		log.Printf("Could not fetch registered commands: %v\n", err)
 	}
 	for _, v := range registeredCommands {
 		err := s.ApplicationCommandDelete(s.State.User.ID, "", v.ID)
 		if err != nil {
-			log.Panicf("Cannot delete '%v' command: %v", v.Name, err)
+			log.Printf("Cannot delete '%v' command: %v\n", v.Name, err)
 		}
 	}
 }
@@ -111,12 +111,12 @@ func guildCreate(s *discordgo.Session, event *discordgo.GuildCreate) {
 		return
 	}
 
-	fmt.Printf("adding guild: %s (%s)\n", event.Guild.Name, event.Guild.ID)
+	log.Printf("adding guild: %s (%s)\n", event.Guild.Name, event.Guild.ID)
 
 	for _, channel := range event.Guild.Channels {
 		if strings.Contains(channel.Name, *Channel) && channel.Type == discordgo.ChannelTypeGuildText {
 			channelIDs = append(channelIDs, channel.ID)
-			fmt.Printf("found text channel on guild: %s\n", *Channel)
+			log.Printf("found text channel on guild: %s\n", *Channel)
 			return
 		}
 	}
