@@ -170,7 +170,7 @@ type Response struct {
 
 type Server struct {
 	Address string `json:"addr"`
-	AppID   string `json:"appid"`
+	AppID   uint32 `json:"appid"`
 	GameDir string `json:"gamedir"`
 }
 
