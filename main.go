@@ -17,12 +17,14 @@ import (
 
 // Flags
 var (
-	BotToken    = flag.String("token", "", "Bot token")
-	ServerIP    = flag.String("serverIP", "", "Server IP to check")
-	Channel     = flag.String("channel", "", "Discord channel to broadcast")
-	done        chan bool
-	channelIDs  []string
-	serverAlive bool
+	BotToken     = flag.String("token", "", "Bot token")
+	ServerIP     = flag.String("serverIP", "", "Server IP to check")
+	Channel      = flag.String("channel", "", "Discord channel to broadcast")
+	Guild        = flag.String("guild", "", "Only register guild with ID")
+	done         chan bool
+	channelIDs   []string
+	serverAlive  bool
+	failedChecks = 0
 
 	alive = "The server is alive"
 	dead  = "The server is dead"
@@ -88,16 +90,28 @@ func ready(s *discordgo.Session, event *discordgo.Ready) {
 				if t.Second()%30 == 0 {
 					// fmt.Println("Tick at", t)
 					isAliveNow := checkServer()
+
+					if !isAliveNow && failedChecks < 2 {
+						failedChecks = failedChecks + 1
+						log.Printf("soft fail probe: %d\n", failedChecks)
+						return
+					}
+					failedChecks = 0
+
 					for _, v := range channelIDs {
 						if isAliveNow && !serverAlive {
 							_, _ = s.ChannelMessageSend(v, alive)
-
-							serverAlive = true
 						}
 						if !isAliveNow && serverAlive {
 							_, _ = s.ChannelMessageSend(v, dead)
-							serverAlive = false
 						}
+					}
+
+					if isAliveNow && !serverAlive {
+						serverAlive = true
+					}
+					if !isAliveNow && serverAlive {
+						serverAlive = false
 					}
 				}
 			}
@@ -109,6 +123,13 @@ func guildCreate(s *discordgo.Session, event *discordgo.GuildCreate) {
 
 	if event.Guild.Unavailable {
 		return
+	}
+
+	if *Guild != "" {
+		if event.Guild.ID != *Guild {
+			log.Printf("ignoring guild: %s (%s)\n", event.Guild.Name, event.Guild.ID)
+			return
+		}
 	}
 
 	log.Printf("adding guild: %s (%s)\n", event.Guild.Name, event.Guild.ID)
